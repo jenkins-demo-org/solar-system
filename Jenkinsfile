@@ -76,7 +76,7 @@ pipeline {
              ///////   publishHTML([allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true, reportDir: 'coverage/lcov-report', reportFiles: 'index.html', reportName: 'Code Coverage HTML Report', reportTitles: '', useWrapperFileDirectly: true])
             }
         }
-        stage('Build Plublish Image') {
+        stage('Build Publish Image') {
             steps {
                 sh  'docker build -t siddharth67/solar-system:$GIT_COMMIT .'
                 withDockerRegistry(credentialsId: 'docker-hub-credentials', url: "") {
