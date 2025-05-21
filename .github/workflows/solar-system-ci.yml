@@ -1,0 +1,23 @@
+name: Solar System CI
+
+on:
+    push:
+    workflow_dispatch: 
+
+jobs:
+    install_dependency:
+        runs-on: ubuntu-latest
+        # container: node:24
+        steps:
+          - name: Checkout Repo
+            uses: actions/checkout@v4
+            
+          - name: List repo file
+            run: ls -ltr
+        
+          - uses: actions/setup-node@v4
+            with:
+                node-version: 22
+
+          - name: Installing Dependencies
+            run: npm install --no-audit
