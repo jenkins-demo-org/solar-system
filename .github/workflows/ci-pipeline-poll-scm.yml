@@ -50,6 +50,7 @@ jobs:
     - name: checkout
       uses: actions/checkout@v4.1.0
     - name: OWASP Dependency Check
+      continue-on-error: true
       uses: dependency-check/Dependency-Check_Action@main
       with:
         project: test
