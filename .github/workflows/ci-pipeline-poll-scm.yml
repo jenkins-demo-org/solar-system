@@ -1,0 +1,174 @@
+name: ci-pipeline-poll-scm
+on:
+  push:
+    branches:
+    - main
+  schedule:
+  - cron: 00 00 * * *
+env:
+  MONGO_URI: mongodb+srv://supercluster.d83jj.mongodb.net/superData
+  MONGO_USERNAME: superuser
+  MONGO_PASSWORD: "${{ secrets.mongo_db_password }}"
+jobs:
+  Installing_Dependencies:
+    name: Installing Dependencies
+    runs-on:
+      - ubuntu-latest
+    container:
+      image: node:24
+#       # This item has no matching transformer
+#       docker:
+#         key: args
+#         value:
+#           isLiteral: true
+#           value: "-u root:root"
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: sh
+      shell: bash
+      run: npm install --no-audit
+  Dependency_Scanning_NPM_Dependency_Audit:
+    name: Dependency Scanning-NPM Dependency Audit
+    runs-on:
+      - ubuntu-latest
+    needs: Installing_Dependencies
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: sh
+      shell: bash
+      run: |-
+        npm audit --audit-level=critical
+        echo $?
+  Dependency_Scanning_OWASP_Dependency_Check:
+    name: Dependency Scanning-OWASP Dependency Check
+    runs-on:
+      - ubuntu-latest
+    needs: Installing_Dependencies
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: test
+        path: "."
+        format: ALL
+        out: reports
+        args: "--failOnCVSS 9"
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4.1.0
+      with:
+        if-no-files-found: ignore
+        name: Dependency Check HTML Report
+        path: "."
+  Unit_Testing:
+    name: Unit Testing
+    runs-on:
+      - ubuntu-latest
+    container:
+      image: node:24
+#       # This item has no matching transformer
+#       docker:
+#         key: args
+#         value:
+#           isLiteral: true
+#           value: "-u root:root"
+    needs:
+    - Dependency_Scanning_NPM_Dependency_Audit
+    - Dependency_Scanning_OWASP_Dependency_Check
+    steps:
+#     # This item has no matching transformer
+#     - retry:
+#         name: retry
+#         arguments:
+#         - isLiteral: true
+#           value: 2
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: sh
+      shell: bash
+      run: npm test
+    - name: Publish test results
+      uses: EnricoMi/publish-unit-test-result-action@v2.12.0
+      if: always()
+      with:
+        junit_files: test-results.xml
+  Code_Coverage:
+    name: Code Coverage
+    runs-on:
+      - ubuntu-latest
+    container:
+      image: node:24
+#       # This item has no matching transformer
+#       docker:
+#         key: args
+#         value:
+#           isLiteral: true
+#           value: "-u root:root"
+    needs: Unit_Testing
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+#     # This item has no matching transformer
+#     - catchError:
+#       - key: buildResult
+#         value:
+#           isLiteral: true
+#           value: SUCCESS
+#       - key: message
+#         value:
+#           isLiteral: true
+#           value: Oops! it will be fixed in future releases
+#       - key: stageResult
+#         value:
+#           isLiteral: true
+#           value: UNSTABLE
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4.1.0
+      with:
+        if-no-files-found: ignore
+        name: Code Coverage HTML Report
+        path: coverage/lcov-report
+  Build_Publish_Image:
+    name: Build Publish Image
+    runs-on:
+      - ubuntu-latest
+    needs: Code_Coverage
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: sh
+      shell: bash
+      run: docker build -t siddharth67/solar-system:$GIT_COMMIT .
+#     # This item has no matching transformer
+#     - withDockerRegistry:
+#       - key: credentialsId
+#         value:
+#           isLiteral: true
+#           value: docker-hub-credentials
+#       - key: url
+#         value:
+#           isLiteral: true
+#           value: ''
+  Trivy_Vulnerability_Scanner:
+    name: Trivy Vulnerability Scanner
+    runs-on:
+      - ubuntu-latest
+    needs: Build_Publish_Image
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: sh
+      shell: bash
+      run: trivy image siddharth67/solar-system:$GIT_COMMIT --severity CRITICAL --exit-code 1 --quiet --format json -o trivy-image-CRITICAL-results.json
+    - name: sh
+      shell: bash
+      run: trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4.1.0
+      with:
+        if-no-files-found: ignore
+        name: Trivy Image Critical Vul Report
+        path: "."
