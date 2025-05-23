@@ -39,3 +39,9 @@ jobs:
             with:
                 name: Mocha-Test-Results-${{ matrix.nodejs-version }}-${{ matrix.operating-system }}
                 path: test-results.xml
+
+          - name: Publish test results
+            uses: EnricoMi/publish-unit-test-result-action@v2.12.0
+            if: always()
+            with:
+                junit_files: test-results.xml
