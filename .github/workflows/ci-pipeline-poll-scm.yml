@@ -147,6 +147,22 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v4.1.0
+    - name: Trivy Security Scan
+      uses: aquasecurity/trivy-action@0.30.0
+      with:
+        image-ref: "${{ vars.DOCKERHUB_USERNAME }}/${{ vars.IMAGE_NAME }}:${{ github.sha }}"
+        severity: CRITICAL
+        format: template
+        template: "@$HOME/.local/bin/trivy-bin/contrib/html.tpl"
+        output: trivy-results.html
+        exit-code: 1
+        hide-progress: true
+    - name: Upload Scan Report
+      if: "${{ always() }}"
+      uses: actions/upload-artifact@v4
+      with:
+        name: Trivy Report
+        path: trivy-results.html
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4.1.0
       with:
