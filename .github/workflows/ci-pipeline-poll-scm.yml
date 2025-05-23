@@ -6,7 +6,7 @@ on:
   schedule:
   - cron: 00 00 * * *
 env:
-  #MONGO_URI: mongodb+srv://supercluster.d83jj.mongodb.net/superData
+  MONGO_URI: mongodb+srv://supercluster.d83jj.mongodb.net/superData
   MONGO_USERNAME: superuser
   MONGO_PASSWORD: "${{ secrets.mongo_db_password }}"
 jobs:
@@ -105,20 +105,13 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v4.1.0
-#     # This item has no matching transformer
-#     - catchError:
-#       - key: buildResult
-#         value:
-#           isLiteral: true
-#           value: SUCCESS
-#       - key: message
-#         value:
-#           isLiteral: true
-#           value: Oops! it will be fixed in future releases
-#       - key: stageResult
-#         value:
-#           isLiteral: true
-#           value: UNSTABLE
+    - name: Install dependencies
+      run: npm install --no-audit
+      shell: bash
+    - name: Check Code Coverage
+      continue-on-error: true
+      run: npm run coverage
+      shell: bash
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4.1.0
       with:
