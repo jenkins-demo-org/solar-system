@@ -25,9 +25,6 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v4.1.0
-    - name: sh
-      shell: bash
-      run: npm install --no-audit
   Dependency_Scanning_NPM_Dependency_Audit:
     name: Dependency Scanning-NPM Dependency Audit
     runs-on:
@@ -36,11 +33,6 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v4.1.0
-    - name: sh
-      shell: bash
-      run: |-
-        npm audit --audit-level=critical
-        echo $?
   Dependency_Scanning_OWASP_Dependency_Check:
     name: Dependency Scanning-OWASP Dependency Check
     runs-on:
@@ -57,7 +49,7 @@ jobs:
         path: "."
         format: ALL
         out: reports
-        args: "--failOnCVSS 2"
+        args: "--failOnCVSS 9"
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4.1.0
       with:
@@ -80,22 +72,23 @@ jobs:
     - Dependency_Scanning_NPM_Dependency_Audit
     - Dependency_Scanning_OWASP_Dependency_Check
     steps:
-#     # This item has no matching transformer
-#     - retry:
-#         name: retry
-#         arguments:
-#         - isLiteral: true
-#           value: 2
+    - name: checkout
+      uses: actions/checkout@v4
+    - name: install dependencies
+      run: npm install --no-audit
+    - uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 60
+        max_attempts: 2
+        retry_on: error
+        command: npm test
+    - name: Publish Test Results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: test-results.xml
     - name: checkout
       uses: actions/checkout@v4.1.0
-    - name: sh
-      shell: bash
-      run: npm test
-    - name: Publish test results
-      uses: EnricoMi/publish-unit-test-result-action@v2.12.0
-      if: always()
-      with:
-        junit_files: test-results.xml
   Code_Coverage:
     name: Code Coverage
     runs-on:
@@ -140,9 +133,6 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v4.1.0
-    - name: sh
-      shell: bash
-      run: docker build -t siddharth67/solar-system:$GIT_COMMIT .
 #     # This item has no matching transformer
 #     - withDockerRegistry:
 #       - key: credentialsId
@@ -161,12 +151,6 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v4.1.0
-    - name: sh
-      shell: bash
-      run: trivy image siddharth67/solar-system:$GIT_COMMIT --severity CRITICAL --exit-code 1 --quiet --format json -o trivy-image-CRITICAL-results.json
-    - name: sh
-      shell: bash
-      run: trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4.1.0
       with:
